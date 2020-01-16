@@ -154,10 +154,6 @@ server <- function(input, output, session, plotFun) {
     }
   })
 
-  #----remove this line----
-
-
-
   #----Meta data reactive----
 
   metaData <- reactive({
@@ -207,7 +203,7 @@ server <- function(input, output, session, plotFun) {
     }
   })
 
-  # Set up user_data_main
+  #----Set up user_data_main----
   user_data_main <- reactive({
     # Path selected by the user
     main <- shinyFiles::parseDirPath(
@@ -233,7 +229,7 @@ server <- function(input, output, session, plotFun) {
   # the data slot.
   values <- reactiveValues(data=NULL, merge=FALSE)
 
-  # Create experiment
+  #----Create experiment----
   experiment <- reactive({
     # select directories
     if( !is.null(user_data_main()) || !is.null(temp_data_main()) ){
@@ -266,6 +262,7 @@ server <- function(input, output, session, plotFun) {
     }
   })
 
+  #----experiment merge-----
   experiment_merged <- observeEvent(input$mergeAssays, {
 
     # Check of experiment exists and if new assay names have been defined
@@ -384,8 +381,11 @@ server <- function(input, output, session, plotFun) {
     return(data)
   })
 
+  #----Filter Data-----
+
   # filteredData returns an updated version of the experimen() object containing
   # a single filter called "user_filter" which is used downstream
+
   filteredData <- reactive({
 
     if (is.null(experiment())){
@@ -442,6 +442,8 @@ server <- function(input, output, session, plotFun) {
 
   })
 
+
+  #-----Render DataTable----
   # Output the consensus data to screen, this will change depending on user input
   output$dataTable <- DT::renderDataTable({
 
@@ -454,7 +456,8 @@ server <- function(input, output, session, plotFun) {
     )
 
     filter %>%
-      dplyr::filter(.data$Name %in% input$assays) %>%
+      rowwise() %>%
+      dplyr::filter(any(unlist(strsplit(.data$Name, split = ',')) %in% input$assays)) %>%
       dplyr::filter(.data$`Sample Name` %in% input$samples)
 
   }, options = list(
@@ -463,6 +466,7 @@ server <- function(input, output, session, plotFun) {
     lengthMenu = c(5, 10, 50, 100)
   ))
 
+  #-----Render metaDataTable----
 
   output$metaDataTable <- DT::renderDataTable({
 
@@ -488,6 +492,8 @@ server <- function(input, output, session, plotFun) {
   # delay amplicon plot until reactive stop changing
   amplicon_settings_d <- amplicon_settings %>% debounce(500)
   sample_settings_d <- sample_settings %>% debounce(500)
+
+  #----Render Amplification plot-----
 
   # plot amplicon plot reactive value
   output$amplicon_plot <- renderPlot({
@@ -520,6 +526,7 @@ server <- function(input, output, session, plotFun) {
 
   })
 
+  #----Render QC plot-----
 
   # Output the QC plot
   output$qcPlot <- renderPlot({
@@ -527,6 +534,8 @@ server <- function(input, output, session, plotFun) {
     if(is.null(experiment())){
       return(NULL)
     }
+
+    input$assays
 
     shiny::withProgress(message = 'Rendering QC plot', value = 0.25, {
       umiAnalyzer::generateQCplots(
@@ -542,6 +551,7 @@ server <- function(input, output, session, plotFun) {
       )
       shiny::incProgress(1, detail = paste("Rendering QC plot"))
     })
+
   })
 
   observeEvent(input$timeSeries, {

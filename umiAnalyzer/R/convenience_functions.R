@@ -38,9 +38,12 @@ filterConsensusTable <- function(
   samples = NULL
   ) {
 
+  # Splits the name columns for position with multiple assays mapped to it
+
   if (!is.null(amplicons)) {
     consensus.data <- consensus.data %>%
-      dplyr::filter(.data$Name %in% amplicons)
+      rowwise() %>%
+        dplyr::filter(any(unlist(strsplit(as.character(.data$Name), split = ',')) %in% amplicons))
   }
 
   if (!is.null(samples)) {
